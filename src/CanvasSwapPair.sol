@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 import {CanvasSwapERC20} from "@/CanvasSwapERC20.sol";
 import {IERC20} from "#/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "#/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "#/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 import {Math} from "@/libraries/Math.sol";
 import "#/forge-std/src/console.sol";
 
@@ -13,7 +14,7 @@ error InsufficientOutputAmount();
 error TransferFailed();
 error InvalidK();
 
-contract CanvasSwapPair is CanvasSwapERC20, Math {
+contract CanvasSwapPair is CanvasSwapERC20, Math, ReentrancyGuard {
     using SafeERC20 for IERC20;
     uint256 constant MINIMUM_LIQUIDITY = 1000;
 
@@ -33,7 +34,7 @@ contract CanvasSwapPair is CanvasSwapERC20, Math {
         token1 = _token1;
     }
 
-    function swap(uint256 amount0Out, uint256 amount1Out, address to) public {
+    function swap(uint256 amount0Out, uint256 amount1Out, address to) public nonReentrant {
         if(amount0Out == 0 && amount1Out == 0) {
             revert InsufficientOutputAmount();
         }
