@@ -7,6 +7,8 @@ import "@/mocks/ERC20Mintable.sol";
 import "@/CanvasSwapPair.sol";
 
 contract CanvasSwapPairTest is Test {
+    uint256 constant MINIMUM_LIQUIDITY = 1000;
+
     CanvasSwapPair public pair;
     ERC20Mintable public token0;
     ERC20Mintable public token1;
@@ -27,7 +29,7 @@ contract CanvasSwapPairTest is Test {
 
         pair.mint();
 
-        assertEq(pair.balanceOf(address(this)), 1e18 - 1000);
+        assertEq(pair.balanceOf(address(this)), 1e18 - MINIMUM_LIQUIDITY);
         assertEq(pair.totalSupply(), 1e18);
         _assertReserves(1e18, 1e18);
     }
@@ -43,7 +45,7 @@ contract CanvasSwapPairTest is Test {
 
         pair.mint();
 
-        assertEq(pair.balanceOf(address(this)), 3e18 - 1000);
+        assertEq(pair.balanceOf(address(this)), 3e18 - MINIMUM_LIQUIDITY);
         assertEq(pair.totalSupply(), 3e18);
         _assertReserves(3e18, 3e18);
     }
@@ -61,7 +63,7 @@ contract CanvasSwapPairTest is Test {
 
         pair.mint();
 
-        assertEq(pair.balanceOf(address(this)), 2e18 - 1000);
+        assertEq(pair.balanceOf(address(this)), 2e18 - MINIMUM_LIQUIDITY);
         assertEq(pair.totalSupply(), 2e18);
         _assertReserves(2e18, 3e18);
     }
@@ -75,6 +77,40 @@ contract CanvasSwapPairTest is Test {
         uint256 liquidity = pair.balanceOf(address(this));
         pair.transfer(address(pair), liquidity);
         pair.burn(address(this));
+
+        assertEq(pair.balanceOf(address(this)), 0);
+        assertEq(pair.totalSupply(), MINIMUM_LIQUIDITY);
+        _assertReserves(uint112(MINIMUM_LIQUIDITY), uint112(MINIMUM_LIQUIDITY));
+        assertEq(token0.balanceOf(address(this)), 10e18 - MINIMUM_LIQUIDITY);
+        assertEq(token1.balanceOf(address(this)), 10e18 - MINIMUM_LIQUIDITY);
+    }
+
+    function testBurnWhenInputUnbalanced() public {
+        // once
+        token0.transfer(address(pair), 1e18);
+        token1.transfer(address(pair), 1e18);
+
+        pair.mint();
+
+        // twice
+        token0.transfer(address(pair), 1e18);
+        token1.transfer(address(pair), 2e18);
+
+        pair.mint();
+
+        uint256 liquidity = pair.balanceOf(address(this));
+        pair.transfer(address(pair), liquidity);
+        pair.burn(address(this));
+
+        assertEq(pair.balanceOf(address(this)), 0);
+        assertEq(pair.totalSupply(), MINIMUM_LIQUIDITY);
+        /* totalSupply=2e18, balance0=2e18, balance1=3e18
+           amount0=2e18-1000, amount1=(2e18-1000)*1.5=3e-1500
+           reserve0=1000, reserve1=1500
+        */
+        _assertReserves(1000, 1500);    
+        assertEq(token0.balanceOf(address(this)), 10e18 - 1000);
+        assertEq(token1.balanceOf(address(this)), 10e18 - 1500);
     }
 
     function _assertReserves(uint112 _reserve0, uint112 _reserve1) private {
