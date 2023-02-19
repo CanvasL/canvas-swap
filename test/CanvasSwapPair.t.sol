@@ -2,14 +2,14 @@
 pragma solidity ^0.8.13;
 
 import "#/forge-std/src/Test.sol";
+import "#/forge-std/src/console.sol";
 import "@/mocks/ERC20Mintable.sol";
 import "@/CanvasSwapPair.sol";
 
 contract CanvasSwapPairTest is Test {
-    // address alice = vm.addr(0x1);
-    CanvasSwapPair pair;
-    ERC20Mintable token0;
-    ERC20Mintable token1;
+    CanvasSwapPair public pair;
+    ERC20Mintable public token0;
+    ERC20Mintable public token1;
 
     function setUp() public {
         token0 = new ERC20Mintable("Token 0", "TK0");
@@ -17,53 +17,64 @@ contract CanvasSwapPairTest is Test {
 
         pair = new CanvasSwapPair(address(token0), address(token1));
 
-        token0.mint(10 ether);
-        token1.mint(10 ether);
+        token0.mint(10e18);
+        token1.mint(10e18);
     }
 
-    function testMint() public {
-        token0.transfer(address(pair), 1 ether);
-        token1.transfer(address(pair), 1 ether);
+    function testMintWhenFirstTime() public {
+        token0.transfer(address(pair), 1e18);
+        token1.transfer(address(pair), 1e18);
 
         pair.mint();
 
-        assertEq(pair.balanceOf(address(this)), 1 ether - 1000);
-        assertEq(pair.totalSupply(), 1 ether);
-        _assertReserves(1 ether, 1 ether);
+        assertEq(pair.balanceOf(address(this)), 1e18 - 1000);
+        assertEq(pair.totalSupply(), 1e18);
+        _assertReserves(1e18, 1e18);
     }
 
-    function testMintTwice() public {
-        token0.transfer(address(pair), 1 ether);
-        token1.transfer(address(pair), 1 ether);
+    function testMintWhenSecondTime() public {
+        token0.transfer(address(pair), 1e18);
+        token1.transfer(address(pair), 1e18);
 
         pair.mint();
 
-        token0.transfer(address(pair), 2 ether);
-        token1.transfer(address(pair), 2 ether);
+        token0.transfer(address(pair), 2e18);
+        token1.transfer(address(pair), 2e18);
 
         pair.mint();
 
-        assertEq(pair.balanceOf(address(this)), 3 ether - 1000);
-        assertEq(pair.totalSupply(), 3 ether);
-        _assertReserves(3 ether, 3 ether);
+        assertEq(pair.balanceOf(address(this)), 3e18 - 1000);
+        assertEq(pair.totalSupply(), 3e18);
+        _assertReserves(3e18, 3e18);
     }
 
-    function testMintUnbalanced() public {
+    function testMintWhenInputUnbalanced() public {
         // once
-        token0.transfer(address(pair), 1 ether);
-        token1.transfer(address(pair), 1 ether);
+        token0.transfer(address(pair), 1e18);
+        token1.transfer(address(pair), 1e18);
 
         pair.mint();
 
         // twice
-        token0.transfer(address(pair), 1 ether);
-        token1.transfer(address(pair), 2 ether);
+        token0.transfer(address(pair), 1e18);
+        token1.transfer(address(pair), 2e18);
 
         pair.mint();
 
-        assertEq(pair.balanceOf(address(this)), 2 ether - 1000);
-        assertEq(pair.totalSupply(), 2 ether);
-        _assertReserves(2 ether, 3 ether);
+        assertEq(pair.balanceOf(address(this)), 2e18 - 1000);
+        assertEq(pair.totalSupply(), 2e18);
+        _assertReserves(2e18, 3e18);
+    }
+
+    function testBurn() public {
+        token0.transfer(address(pair), 1e18);
+        token1.transfer(address(pair), 1e18);
+
+        pair.mint();
+
+        uint256 liquidity = pair.balanceOf(address(this));
+        pair.transfer(address(pair), liquidity);
+        pair.burn(address(this));
     }
 
     function _assertReserves(uint112 _reserve0, uint112 _reserve1) private {
