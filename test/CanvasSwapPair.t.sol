@@ -2,21 +2,11 @@
 pragma solidity ^0.8.13;
 
 import "#/forge-std/src/Test.sol";
-import "#/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "@/mocks/ERC20Mintable.sol";
 import "@/CanvasSwapPair.sol";
 
-contract ERC20Mintable is ERC20 {
-    constructor(
-        string memory _name,
-        string memory _symbol
-    ) ERC20(_name, _symbol) {}
-
-    function mint(uint256 _amount) public {
-        _mint(msg.sender, _amount);
-    }
-}
-
 contract CanvasSwapPairTest is Test {
+    // address alice = vm.addr(0x1);
     CanvasSwapPair pair;
     ERC20Mintable token0;
     ERC20Mintable token1;
@@ -24,6 +14,7 @@ contract CanvasSwapPairTest is Test {
     function setUp() public {
         token0 = new ERC20Mintable("Token 0", "TK0");
         token1 = new ERC20Mintable("Token 1", "TK1");
+
         pair = new CanvasSwapPair(address(token0), address(token1));
 
         token0.mint(10 ether);
