@@ -1,21 +1,25 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
-import {CanvasSwapERC20} from "@/CanvasSwapERC20.sol";
-import {IERC20} from "#/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "#/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "#/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
-import {Math} from "@/libraries/Math.sol";
-import "#/forge-std/src/console.sol";
+pragma solidity ^0.8.21;
 
-error InsufficientLiquidityMint();
-error InsufficientLiquidityBurn();
-error InsufficientLiquiditySwap();
-error InsufficientOutputAmount();
-error TransferFailed();
-error InvalidK();
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
-contract CanvasSwapPair is CanvasSwapERC20, Math, ReentrancyGuard {
+contract LPToken is ERC20, ReentrancyGuard {
+    error InsufficientLiquidityMint();
+    error InsufficientLiquiditySwap();
+    error InsufficientOutputAmount();
+    error InvalidK();
+
+    event Burn(address indexed sender, uint256 amount0, uint256 amount1);
+    event Mint(address indexed sender, uint256 amount0, uint256 amount1);
+    event Sync(uint256 reserve0, uint256 reserve1);
+    event Swap(address indexed sender, uint256 amount0Out, uint256 amount1Out, address indexed to);
+
     using SafeERC20 for IERC20;
+    
     uint256 constant MINIMUM_LIQUIDITY = 1000;
 
     address public token0;
@@ -24,12 +28,7 @@ contract CanvasSwapPair is CanvasSwapERC20, Math, ReentrancyGuard {
     uint112 private reserve0;
     uint112 private reserve1;
 
-    event Burn(address indexed sender, uint256 amount0, uint256 amount1);
-    event Mint(address indexed sender, uint256 amount0, uint256 amount1);
-    event Sync(uint256 reserve0, uint256 reserve1);
-    event Swap(address indexed sender, uint256 amount0Out, uint256 amount1Out, address indexed to);
-
-    constructor(address _token0, address _token1) CanvasSwapERC20("Canvas Swap", "CASP") {
+    constructor(address _token0, address _token1, string memory name, string memory symbol) ERC20(name, symbol) {
         token0 = _token0;
         token1 = _token1;
     }
@@ -48,7 +47,7 @@ contract CanvasSwapPair is CanvasSwapERC20, Math, ReentrancyGuard {
         uint256 balance0 = IERC20(token0).balanceOf(address(this)) - amount0Out;
         uint256 balance1 = IERC20(token1).balanceOf(address(this)) - amount1Out;
 
-        if(balance0 * balance1 < uint256(_reserve0)* uint256(_reserve1)) {
+        if(balance0 * balance1 < uint256(_reserve0) * uint256(_reserve1)) {
             revert InvalidK();
         }
 
@@ -77,7 +76,7 @@ contract CanvasSwapPair is CanvasSwapERC20, Math, ReentrancyGuard {
 
         if (totalSupply() == 0) {
             liquidity = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
-            _mint(address(0), MINIMUM_LIQUIDITY);
+            _mint(address(this), MINIMUM_LIQUIDITY);
         } else {
             liquidity = Math.min(
                 (totalSupply() * amount0) / reserve0,
