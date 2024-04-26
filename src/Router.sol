@@ -5,15 +5,14 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {LPTokenFactory} from "./LPTokenFactory.sol";
 import {LPToken} from "./LPToken.sol";
+import {RouterLibrary} from "./RouterLibrary.sol";
 
 contract Router {
     error DeadlineAlreadyPast();
     error LPTokenNotExists();
     error InsufficientAmount(address token);
-    error InsufficientLiquidity();
     error LowerThanMinOutAmount();
     error GreaterThanMaxInAmount();
-    error InvalidPath();
 
     using SafeERC20 for IERC20;
 
@@ -51,28 +50,14 @@ contract Router {
 
         (uint256 reserveA, uint256 reserveB) = LPToken(lpToken).getReserves();
 
-        if (reserveA == 0 && reserveB == 0) {
-            (amountA, amountB) = (amountADesired, amountBDesired);
-        } else {
-            uint256 amountBOptimal = (amountADesired * reserveB) / reserveA;
-            if (amountBOptimal <= amountBDesired) {
-                if (amountBOptimal < amountBMin) {
-                    revert InsufficientAmount(tokenB);
-                }
-
-                (amountA, amountB) = (amountADesired, amountBOptimal);
-            } else {
-                uint256 amountAOptimal = (amountBDesired * reserveA) / reserveB;
-
-                assert(amountAOptimal <= amountADesired);
-
-                if (amountAOptimal < amountAMin) {
-                    revert InsufficientAmount(tokenA);
-                }
-
-                (amountA, amountB) = (amountAOptimal, amountBDesired);
-            }
-        }
+        (amountA, amountB) = RouterLibrary.getOptimalAmount(
+            reserveA,
+            reserveB,
+            amountADesired,
+            amountBDesired,
+            amountAMin,
+            amountBMin
+        );
 
         IERC20(tokenA).safeTransferFrom(msg.sender, lpToken, amountA);
         IERC20(tokenB).safeTransferFrom(msg.sender, lpToken, amountB);
@@ -119,8 +104,8 @@ contract Router {
         address to,
         uint256 deadline
     ) public unexpired(deadline) returns (uint256[] memory amounts) {
-        amounts = _getAmountsOut(amountIn, path);
-        if(amounts[amounts.length - 1] < amountOutMin) {
+        amounts = RouterLibrary.getAmountsOut(LP_TOKEN_FACTORY, amountIn, path);
+        if (amounts[amounts.length - 1] < amountOutMin) {
             revert LowerThanMinOutAmount();
         }
         IERC20(path[0]).safeTransferFrom(
@@ -138,8 +123,8 @@ contract Router {
         address to,
         uint256 deadline
     ) public unexpired(deadline) returns (uint256[] memory amounts) {
-        amounts = _getAmountsIn(amountOut, path);
-        if(amounts[0] > amountInMax) {
+        amounts = RouterLibrary.getAmountsIn(LP_TOKEN_FACTORY, amountOut, path);
+        if (amounts[0] > amountInMax) {
             revert GreaterThanMaxInAmount();
         }
         IERC20(path[0]).safeTransferFrom(
@@ -168,76 +153,6 @@ contract Router {
                 : _to;
             LPToken(LP_TOKEN_FACTORY.getLPTokenByPair(path[i], path[i + 1]))
                 .swap(amount0Out, amount1Out, to);
-        }
-    }
-
-    function _getAmountOut(
-        uint256 amountIn,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) internal pure returns (uint256 amountOut) {
-        require(amountIn > 0, "UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT");
-
-        if(reserveIn == 0 || reserveOut ==0 ) {
-            revert InsufficientLiquidity();
-        }
-        uint256 amountInWithFee = amountIn * (997);
-        uint256 numerator = amountInWithFee * (reserveOut);
-        uint256 denominator = reserveIn * (1000) + (amountInWithFee);
-        amountOut = numerator / denominator;
-    }
-
-    function _getAmountIn(
-        uint256 amountOut,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) internal pure returns (uint256 amountIn) {
-        require(amountOut > 0, "UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT");
-        if(reserveIn == 0 || reserveOut ==0 ) {
-            revert InsufficientLiquidity();
-        }
-        uint256 numerator = reserveIn * (amountOut) * (1000);
-        uint256 denominator = (reserveOut - (amountOut)) * (997);
-        amountIn = (numerator / denominator) + (1);
-    }
-
-    function _getAmountsOut(
-        uint256 amountIn,
-        address[] memory path
-    ) internal view returns (uint256[] memory amounts) {
-        if(path.length < 2) {
-            revert InvalidPath();
-        }
-
-        amounts = new uint256[](path.length);
-        amounts[0] = amountIn;
-        for (uint256 i; i < path.length - 1; i++) {
-            address lpToken = LP_TOKEN_FACTORY.getLPTokenByPair(
-                path[i],
-                path[i + 1]
-            );
-            (uint256 reserveIn, uint256 reserveOut) = LPToken(lpToken).getReserves();
-            amounts[i + 1] = _getAmountOut(amounts[i], reserveIn, reserveOut);
-        }
-    }
-
-    function _getAmountsIn(
-        uint256 amountOut,
-        address[] memory path
-    ) internal view returns (uint256[] memory amounts) {
-        if(path.length < 2) {
-            revert InvalidPath();
-        }
-
-        amounts = new uint256[](path.length);
-        amounts[amounts.length - 1] = amountOut;
-        for (uint256 i = path.length - 1; i > 0; i--) {
-            address lpToken = LP_TOKEN_FACTORY.getLPTokenByPair(
-                path[i - 1],
-                path[i]
-            );
-            (uint256 reserveIn, uint256 reserveOut) = LPToken(lpToken).getReserves();
-            amounts[i - 1] = _getAmountIn(amounts[i], reserveIn, reserveOut);
         }
     }
 }
