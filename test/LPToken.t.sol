@@ -26,7 +26,7 @@ contract LPTokenTest is Test {
         token0.transfer(address(lpToken), 1e18);
         token1.transfer(address(lpToken), 1e18);
 
-        lpToken.mint();
+        lpToken.mint(address(this));
 
         assertEq(lpToken.balanceOf(address(this)), 1e18 - MINIMUM_LIQUIDITY);
         assertEq(lpToken.totalSupply(), 1e18);
@@ -37,12 +37,12 @@ contract LPTokenTest is Test {
         token0.transfer(address(lpToken), 1e18);
         token1.transfer(address(lpToken), 1e18);
 
-        lpToken.mint();
+        lpToken.mint(address(this));
 
         token0.transfer(address(lpToken), 2e18);
         token1.transfer(address(lpToken), 2e18);
 
-        lpToken.mint();
+        lpToken.mint(address(this));
 
         assertEq(lpToken.balanceOf(address(this)), 3e18 - MINIMUM_LIQUIDITY);
         assertEq(lpToken.totalSupply(), 3e18);
@@ -54,13 +54,13 @@ contract LPTokenTest is Test {
         token0.transfer(address(lpToken), 1e18);
         token1.transfer(address(lpToken), 1e18);
 
-        lpToken.mint();
+        lpToken.mint(address(this));
 
         // twice
         token0.transfer(address(lpToken), 1e18);
         token1.transfer(address(lpToken), 2e18);
 
-        lpToken.mint();
+        lpToken.mint(address(this));
 
         assertEq(lpToken.balanceOf(address(this)), 2e18 - MINIMUM_LIQUIDITY);
         assertEq(lpToken.totalSupply(), 2e18);
@@ -71,7 +71,7 @@ contract LPTokenTest is Test {
         token0.transfer(address(lpToken), 1e18);
         token1.transfer(address(lpToken), 1e18);
 
-        lpToken.mint();
+        lpToken.mint(address(this));
 
         uint256 liquidity = lpToken.balanceOf(address(this));
         lpToken.transfer(address(lpToken), liquidity);
@@ -89,13 +89,13 @@ contract LPTokenTest is Test {
         token0.transfer(address(lpToken), 1e18);
         token1.transfer(address(lpToken), 1e18);
 
-        lpToken.mint();
+        lpToken.mint(address(this));
 
         // twice
         token0.transfer(address(lpToken), 1e18);
         token1.transfer(address(lpToken), 2e18);
 
-        lpToken.mint();
+        lpToken.mint(address(this));
 
         uint256 liquidity = lpToken.balanceOf(address(this));
         lpToken.transfer(address(lpToken), liquidity);
@@ -107,13 +107,13 @@ contract LPTokenTest is Test {
            amount0=2e18-1000, amount1=(2e18-1000)*1.5=3e-1500
            reserve0=1000, reserve1=1500
         */
-        _assertReserves(1000, 1500);    
+        _assertReserves(1000, 1500);
         assertEq(token0.balanceOf(address(this)), 10e18 - 1000);
         assertEq(token1.balanceOf(address(this)), 10e18 - 1500);
     }
 
     function _assertReserves(uint112 _reserve0, uint112 _reserve1) private view {
-        (uint112 reserve0, uint112 reserve1, ) = lpToken.getReserves();
+        (uint112 reserve0, uint112 reserve1) = lpToken.getReserves();
 
         assertEq(uint256(_reserve0), uint256(reserve0));
         assertEq(uint256(_reserve1), uint256(reserve1));

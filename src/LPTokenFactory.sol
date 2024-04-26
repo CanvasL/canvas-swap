@@ -10,13 +10,23 @@ contract LPTokenFactory {
     error ZeroAddress();
     error LPTokenAlreadyExists();
 
-    event LPTokenCreated(address indexed token0, address indexed token1, address indexed lpToken, uint256 lpTokensLength);
+    event LPTokenCreated(
+        address indexed token0,
+        address indexed token1,
+        address indexed lpToken,
+        uint256 lpTokensLength
+    );
 
     mapping(address => mapping(address => address)) internal _lpTokenByPair;
     address[] internal _lpTokens;
 
-    function getLPTokenByPair(address tokenA, address tokenB) public view returns (address) {
-        (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+    function getLPTokenByPair(
+        address tokenA,
+        address tokenB
+    ) public view returns (address) {
+        (address token0, address token1) = tokenA < tokenB
+            ? (tokenA, tokenB)
+            : (tokenB, tokenA);
         return _lpTokenByPair[token0][token1];
     }
 
@@ -24,21 +34,29 @@ contract LPTokenFactory {
         return _lpTokens;
     }
 
-    function createLPToken(address tokenA, address tokenB) public returns (address) {
-        if(tokenA == tokenB) {
+    function createLPToken(
+        address tokenA,
+        address tokenB
+    ) public returns (address) {
+        if (tokenA == tokenB) {
             revert IdenticalTokenAddresses();
         }
-        if(tokenA == address(0)) {
+        if (tokenA == address(0)) {
             revert ZeroAddress();
         }
 
-        (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        (address token0, address token1) = tokenA < tokenB
+            ? (tokenA, tokenB)
+            : (tokenB, tokenA);
 
-        if(_lpTokenByPair[token0][token1] != address(0)) {
+        if (_lpTokenByPair[token0][token1] != address(0)) {
             revert LPTokenAlreadyExists();
         }
 
-        (string memory lpName, string memory lpSymbol) = _generateLPTokenNameAndSymbol(token0, token1);
+        (
+            string memory lpName,
+            string memory lpSymbol
+        ) = _generateLPTokenNameAndSymbol(token0, token1);
         LPToken lpToken = new LPToken(token0, token1, lpName, lpSymbol);
 
         _lpTokenByPair[token0][token1] = address(lpToken);
@@ -52,11 +70,7 @@ contract LPTokenFactory {
     function _generateLPTokenNameAndSymbol(
         address token0,
         address token1
-    )
-        private
-        view
-        returns (string memory lpName, string memory lpSymbol)
-    {
+    ) private view returns (string memory lpName, string memory lpSymbol) {
         string memory symbol0 = ERC20(token0).symbol();
         string memory symbol1 = ERC20(token1).symbol();
 
